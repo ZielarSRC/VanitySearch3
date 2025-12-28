@@ -1684,8 +1684,11 @@ void VanitySearch::FindKeyGPU(TH_PARAM *ph) {
   int nbThread = g.GetNbThread();
   Point *p = new Point[nbThread];
   Int *keys = new Int[nbThread];
+  Int *baseKeys = new Int[nbThread];
   vector<ITEM> found;
   
+  uint64_t batchOffset = 0; // how many keys already advanced since last (re)key
+
   printf("GPU: %s\n",g.deviceName.c_str());
 
   counters[thId] = 0;
@@ -1694,6 +1697,8 @@ void VanitySearch::FindKeyGPU(TH_PARAM *ph) {
   uint64_t tasksize = ((uint64_t)STEP_SIZE * (uint64_t)nbThread) * (uint64_t)(((rekey * 1000000) / ((uint64_t)STEP_SIZE * (uint64_t)nbThread)) + 1);
 
   //getGPUStartingKeys(thId, g.GetGroupSize(), nbThread, keys, p, &tasksize, ph->THnextKey);
+  for (int i = 0; i < nbThread; i++) baseKeys[i].Set(&keys[i]);
+  batchOffset = 0;
 
   g.SetSearchMode(searchMode);
   g.SetSearchType(searchType);
@@ -1707,6 +1712,8 @@ void VanitySearch::FindKeyGPU(TH_PARAM *ph) {
   }
 
   getGPUStartingKeys(thId, g.GetGroupSize(), nbThread, keys, p, &tasksize, ph->THnextKey);
+  for (int i = 0; i < nbThread; i++) baseKeys[i].Set(&keys[i]);
+  batchOffset = 0;
   ok = g.SetKeys(p);
   //ph->rekeyRequest = false;
 
@@ -1718,6 +1725,8 @@ void VanitySearch::FindKeyGPU(TH_PARAM *ph) {
     //if (ph->rekeyRequest) {
 	if(task_counters[thId] >= tasksize) {
       getGPUStartingKeys(thId, g.GetGroupSize(), nbThread, keys, p, &tasksize, ph->THnextKey);
+  for (int i = 0; i < nbThread; i++) baseKeys[i].Set(&keys[i]);
+  batchOffset = 0;
       ok = g.SetKeys(p);
       //ph->rekeyRequest = false;
 	  task_counters[thId] = 0;
@@ -1729,21 +1738,23 @@ void VanitySearch::FindKeyGPU(TH_PARAM *ph) {
     for(int i=0;i<(int)found.size() && !endOfSearch;i++) {
 
       ITEM it = found[i];
-      checkAddr(*(prefix_t *)(it.hash), it.hash, keys[it.thId], it.incr, it.endo, it.mode);
+            Int kTmp;
+      kTmp.Set(&baseKeys[it.thId]);
+      if (batchOffset) kTmp.Add((uint64_t)batchOffset);
+      checkAddr(*(prefix_t *)(it.hash), it.hash, kTmp, it.incr, it.endo, it.mode);
  
     }
-
     if (ok) {
-      for (int i = 0; i < nbThread; i++) {
-        keys[i].Add((uint64_t)STEP_SIZE);
-      }
-      //counters[thId] += 6 * STEP_SIZE * nbThread; // Point +  endo1 + endo2 + symetrics
-	  counters[thId] += STEP_SIZE * nbThread;
-	  task_counters[thId] += STEP_SIZE * nbThread;
+      // Keys are advanced on-GPU; avoid O(nbThread) big-int increments on CPU.
+      batchOffset += STEP_SIZE;
+      // Each step checks: direct + (endo1, endo2) + symmetric variants => ~6x effective keys.
+      counters[thId] += 6ULL * (uint64_t)STEP_SIZE * (uint64_t)nbThread;
+      task_counters[thId] += (uint64_t)STEP_SIZE * (uint64_t)nbThread;
     }
 
   }
 
+  delete[] baseKeys;
   delete[] keys;
   delete[] p;
 

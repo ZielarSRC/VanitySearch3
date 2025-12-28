@@ -31,24 +31,47 @@ CUDA       ?= /usr/local/cuda
 CXXCUDA    ?= $(CXX)
 NVCC       ?= $(CUDA)/bin/nvcc
 
-# Default compute capability for GPU build.
-# AWS p6-b200.* targets Blackwell (sm_100). Override if needed, e.g.: make gpu=1 ccap=90
-ccap       ?= 100
+# GPU arch list for fatbins.
+# Default targets a wide range of devices and includes Blackwell for AWS p6-b200.*.
+# Override if you want a smaller binary / faster compile, e.g.:
+#   make gpu=1 GPU_ARCHS="90 100"
+GPU_ARCHS  ?= 100
+
+# Build-time toggles:
+#   native=1  -> enable -march=native on the host compiler
+#   lto=1     -> enable LTO on the host linker/compiler
+native      ?= 1
+lto         ?= 0
+
+# Common host flags
+HOST_OPT    = -O3 -DNDEBUG -fno-strict-aliasing -fomit-frame-pointer
+HOST_WARN   = -Wno-write-strings
+HOST_STD    = -std=c++14
+HOST_CPU    = -m64 -mssse3
+
+ifeq ($(native),1)
+HOST_CPU   += -march=native -mtune=native
+endif
+
+ifeq ($(lto),1)
+HOST_OPT   += -flto
+LTO_LFLAGS  = -flto
+endif
 
 ifdef gpu
 ifdef debug
-CXXFLAGS   = -DWITHGPU -m64 -mssse3 -Wno-write-strings -g -std=c++14 -fno-strict-aliasing -I. -I$(CUDA)/include
+CXXFLAGS   = -DWITHGPU $(HOST_CPU) $(HOST_WARN) -g $(HOST_STD) -fno-strict-aliasing -I. -I$(CUDA)/include
 else
-CXXFLAGS   = -DWITHGPU -m64 -mssse3 -Wno-write-strings -O3 -std=c++14 -fno-strict-aliasing -I. -I$(CUDA)/include
+CXXFLAGS   = -DWITHGPU $(HOST_CPU) $(HOST_WARN) $(HOST_OPT) $(HOST_STD) -I. -I$(CUDA)/include
 endif
-LFLAGS     = -lpthread -L$(CUDA)/lib64 -lcudart
+LFLAGS     = -lpthread -L$(CUDA)/lib64 -lcudart $(LTO_LFLAGS)
 else
 ifdef debug
-CXXFLAGS   = -m64 -mssse3 -Wno-write-strings -g -std=c++14 -fno-strict-aliasing -I.
+CXXFLAGS   = $(HOST_CPU) $(HOST_WARN) -g $(HOST_STD) -fno-strict-aliasing -I.
 else
-CXXFLAGS   = -m64 -mssse3 -Wno-write-strings -O3 -std=c++14 -fno-strict-aliasing -I.
+CXXFLAGS   = $(HOST_CPU) $(HOST_WARN) $(HOST_OPT) $(HOST_STD) -I.
 endif
-LFLAGS     = -lpthread
+LFLAGS     = -lpthread $(LTO_LFLAGS)
 endif
 
 
@@ -57,13 +80,18 @@ endif
 ifdef gpu
 ifdef debug
 $(OBJDIR)/GPU/GPUEngine.o: GPU/GPUEngine.cu
-	$(NVCC) -DWITHGPU -G -maxrregcount=0 --ptxas-options=-v --compile --compiler-options -fPIC -ccbin $(CXXCUDA) -m64 -g -I$(CUDA)/include \
-		-gencode=arch=compute_$(ccap),code=sm_$(ccap) -gencode=arch=compute_$(ccap),code=compute_$(ccap) \
+	$(NVCC) -DWITHGPU -G -maxrregcount=0 --ptxas-options=-v --compile \
+		--compiler-options "-fPIC" -ccbin $(CXXCUDA) -m64 -g -I$(CUDA)/include \
+		$(foreach arch,$(GPU_ARCHS),-gencode=arch=compute_$(arch),code=sm_$(arch)) \
+		-gencode=arch=compute_$(lastword $(GPU_ARCHS)),code=compute_$(lastword $(GPU_ARCHS)) \
 		-o $(OBJDIR)/GPU/GPUEngine.o -c GPU/GPUEngine.cu
 else
 $(OBJDIR)/GPU/GPUEngine.o: GPU/GPUEngine.cu
-	$(NVCC) -DWITHGPU -maxrregcount=0 --ptxas-options=-v --compile --compiler-options -fPIC -ccbin $(CXXCUDA) -m64 -O3 -I$(CUDA)/include \
-		-gencode=arch=compute_$(ccap),code=sm_$(ccap) -gencode=arch=compute_$(ccap),code=compute_$(ccap) \
+	$(NVCC) -DWITHGPU -maxrregcount=0 --use_fast_math \
+		-Xptxas -O3,-v --compile \
+		--compiler-options "-fPIC" -ccbin $(CXXCUDA) -m64 -O3 -I$(CUDA)/include \
+		$(foreach arch,$(GPU_ARCHS),-gencode=arch=compute_$(arch),code=sm_$(arch)) \
+		-gencode=arch=compute_$(lastword $(GPU_ARCHS)),code=compute_$(lastword $(GPU_ARCHS)) \
 		-o $(OBJDIR)/GPU/GPUEngine.o -c GPU/GPUEngine.cu
 endif
 endif
