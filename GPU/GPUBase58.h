@@ -2,19 +2,21 @@
 // Base58
 // ---------------------------------------------------------------------------------
 
-__device__ __constant__ char *pszBase58 =
-    (char *)"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+__device__ __constant__ char *pszBase58 = (char *)"123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
 
 __device__ __constant__ int8_t b58digits_map[] = {
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-    -1, -1, -1, -1, -1, 0,  1,  2,  3,  4,  5,  6,  7,  8,  -1, -1, -1, -1, -1, -1, -1, 9,
-    10, 11, 12, 13, 14, 15, 16, -1, 17, 18, 19, 20, 21, -1, 22, 23, 24, 25, 26, 27, 28, 29,
-    30, 31, 32, -1, -1, -1, -1, -1, -1, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, -1, 44,
-    45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, -1, -1, -1, -1, -1,
+  -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+  -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+  -1,-1,-1,-1,-1,-1,-1,-1, -1,-1,-1,-1,-1,-1,-1,-1,
+  -1, 0, 1, 2, 3, 4, 5, 6,  7, 8,-1,-1,-1,-1,-1,-1,
+  -1, 9,10,11,12,13,14,15, 16,-1,17,18,19,20,21,-1,
+  22,23,24,25,26,27,28,29, 30,31,32,-1,-1,-1,-1,-1,
+  -1,33,34,35,36,37,38,39, 40,41,42,43,-1,44,45,46,
+  47,48,49,50,51,52,53,54, 55,56,57,-1,-1,-1,-1,-1,
 };
 
-__device__ __noinline__ void _GetAddress(int type, uint32_t *hash, char *b58Add) {
+__device__ __noinline__ void _GetAddress(int type,uint32_t *hash,char *b58Add) {
+
   uint32_t addBytes[16];
   uint32_t s[16];
   unsigned char A[25];
@@ -23,18 +25,20 @@ __device__ __noinline__ void _GetAddress(int type, uint32_t *hash, char *b58Add)
   unsigned char digits[128];
 
   switch (type) {
-    case P2PKH:
-      A[0] = 0x00;
-      break;
 
-    case P2SH:
-      A[0] = 0x05;
-      break;
+  case P2PKH:
+    A[0] = 0x00;
+    break;
+
+  case P2SH:
+    A[0] = 0x05;
+    break;
+
   }
   memcpy(A + 1, (char *)hash, 20);
 
   // Compute checksum
-
+  
   addBytes[0] = __byte_perm(hash[0], (uint32_t)A[0], 0x4012);
   addBytes[1] = __byte_perm(hash[0], hash[1], 0x3456);
   addBytes[2] = __byte_perm(hash[1], hash[2], 0x3456);
@@ -56,7 +60,8 @@ __device__ __noinline__ void _GetAddress(int type, uint32_t *hash, char *b58Add)
   SHA256Transform(s, addBytes);
 
 #pragma unroll 8
-  for (int i = 0; i < 8; i++) addBytes[i] = s[i];
+  for (int i = 0; i < 8; i++)
+    addBytes[i] = s[i];
 
   addBytes[8] = 0x80000000;
   addBytes[9] = 0;
@@ -78,11 +83,11 @@ __device__ __noinline__ void _GetAddress(int type, uint32_t *hash, char *b58Add)
   // Base58
 
   // Skip leading zeroes
-  while (addPtr[0] == 0) {
+  while(addPtr[0] == 0) {
     b58Add[retPos++] = '1';
     addPtr++;
   }
-  int length = 25 - retPos;
+  int length = 25-retPos;
 
   int digitslen = 1;
   digits[0] = 0;
@@ -100,7 +105,9 @@ __device__ __noinline__ void _GetAddress(int type, uint32_t *hash, char *b58Add)
   }
 
   // reverse
-  for (int i = 0; i < digitslen; i++) b58Add[retPos++] = (pszBase58[digits[digitslen - 1 - i]]);
+  for (int i = 0; i < digitslen; i++)
+    b58Add[retPos++] = (pszBase58[digits[digitslen - 1 - i]]);
 
   b58Add[retPos] = 0;
+
 }
