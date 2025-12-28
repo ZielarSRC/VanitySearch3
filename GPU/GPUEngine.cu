@@ -22,7 +22,7 @@
 
 // ---------------------------------------------------------------------------------------
 
-__global__ void comp_keys(uint32_t mode,
+__global__ __launch_bounds__(NB_TRHEAD_PER_GROUP) void comp_keys(uint32_t mode,
                           const prefix_t *__restrict__ prefix,
                           const uint32_t *__restrict__ lookup32,
                           uint64_t *__restrict__ keys,
@@ -35,7 +35,7 @@ __global__ void comp_keys(uint32_t mode,
 
 }
 
-__global__ void comp_keys_p2sh(uint32_t mode,
+__global__ __launch_bounds__(NB_TRHEAD_PER_GROUP) void comp_keys_p2sh(uint32_t mode,
                                const prefix_t *__restrict__ prefix,
                                const uint32_t *__restrict__ lookup32,
                                uint64_t *__restrict__ keys,
@@ -48,7 +48,7 @@ __global__ void comp_keys_p2sh(uint32_t mode,
 
 }
 
-__global__ void comp_keys_comp(const prefix_t *__restrict__ prefix,
+__global__ __launch_bounds__(NB_TRHEAD_PER_GROUP) void comp_keys_comp(const prefix_t *__restrict__ prefix,
                                const uint32_t *__restrict__ lookup32,
                                uint64_t *__restrict__ keys,
                                uint32_t maxFound,
@@ -60,7 +60,7 @@ __global__ void comp_keys_comp(const prefix_t *__restrict__ prefix,
 
 }
 
-__global__ void comp_keys_pattern(uint32_t mode,
+__global__ __launch_bounds__(NB_TRHEAD_PER_GROUP) void comp_keys_pattern(uint32_t mode,
                                   const prefix_t *__restrict__ pattern,
                                   uint64_t *__restrict__ keys,
                                   uint32_t maxFound,
@@ -72,7 +72,7 @@ __global__ void comp_keys_pattern(uint32_t mode,
 
 }
 
-__global__ void comp_keys_p2sh_pattern(uint32_t mode,
+__global__ __launch_bounds__(NB_TRHEAD_PER_GROUP) void comp_keys_p2sh_pattern(uint32_t mode,
                                        const prefix_t *__restrict__ pattern,
                                        uint64_t *__restrict__ keys,
                                        uint32_t maxFound,
@@ -292,12 +292,17 @@ GPUEngine::GPUEngine(int nbThreadGroup, int gpuId, uint32_t maxFound,bool rekey)
   */
 
   // Allocate memory
+  // NOTE: Keep host pinned buffers for the whole lifetime of the engine.
+  // Some refactors freed them after the first upload, which breaks workflows
+  // that call SetPrefix/SetPattern multiple times (wildcards, multi-run, etc.).
   err = cudaMalloc((void **)&inputPrefix, _64K * 2);
   if (err != cudaSuccess) {
     printf("GPUEngine: Allocate prefix memory: %s\n", cudaGetErrorString(err));
     return;
   }
-  err = cudaHostAlloc(&inputPrefixPinned, _64K * 2, cudaHostAllocWriteCombined | cudaHostAllocMapped);
+  // WriteCombined is beneficial here (host writes, device reads). We do NOT
+  // need mapped memory (UVA) because we always use cudaMemcpyAsync.
+  err = cudaHostAlloc(&inputPrefixPinned, _64K * 2, cudaHostAllocWriteCombined);
   if (err != cudaSuccess) {
     printf("GPUEngine: Allocate prefix pinned memory: %s\n", cudaGetErrorString(err));
     return;
@@ -307,7 +312,7 @@ GPUEngine::GPUEngine(int nbThreadGroup, int gpuId, uint32_t maxFound,bool rekey)
     printf("GPUEngine: Allocate input memory: %s\n", cudaGetErrorString(err));
     return;
   }
-  err = cudaHostAlloc(&inputKeyPinned, nbThread * 32 * 2, cudaHostAllocWriteCombined | cudaHostAllocMapped);
+  err = cudaHostAlloc(&inputKeyPinned, nbThread * 32 * 2, cudaHostAllocWriteCombined);
   if (err != cudaSuccess) {
     printf("GPUEngine: Allocate input pinned memory: %s\n", cudaGetErrorString(err));
     return;
@@ -317,7 +322,9 @@ GPUEngine::GPUEngine(int nbThreadGroup, int gpuId, uint32_t maxFound,bool rekey)
     printf("GPUEngine: Allocate output memory: %s\n", cudaGetErrorString(err));
     return;
   }
-  err = cudaHostAlloc(&outputPrefixPinned, outputSize, cudaHostAllocMapped);
+  // Host reads results, so do not use WriteCombined.
+  // Mapping is not required; we copy via cudaMemcpyAsync.
+  err = cudaHostAlloc(&outputPrefixPinned, outputSize, 0);
   if (err != cudaSuccess) {
     printf("GPUEngine: Allocate output pinned memory: %s\n", cudaGetErrorString(err));
     return;
@@ -423,10 +430,9 @@ void GPUEngine::SetPrefix(std::vector<prefix_t> prefixes) {
   // Fill device memory (avoid legacy-stream implicit synchronization)
   cudaMemcpyAsync(inputPrefix, inputPrefixPinned, _64K * 2, cudaMemcpyHostToDevice, stream);
 
-  // We do not need the input pinned memory anymore
+  // Ensure the upload is complete before the next kernel launch.
+  // Keep the pinned staging buffer for future SetPrefix/SetPattern calls.
   cudaStreamSynchronize(stream);
-  cudaFreeHost(inputPrefixPinned);
-  inputPrefixPinned = NULL;
   lostWarning = false;
 
   cudaError_t err = cudaGetLastError();
@@ -444,10 +450,9 @@ void GPUEngine::SetPattern(const char *pattern) {
   size_t len = strnlen(pattern, 47) + 1;
   cudaMemcpyAsync(inputPrefix, inputPrefixPinned, len, cudaMemcpyHostToDevice, stream);
 
-  // We do not need the input pinned memory anymore
+  // Ensure the upload is complete before the next kernel launch.
+  // Keep the pinned staging buffer for future SetPrefix/SetPattern calls.
   cudaStreamSynchronize(stream);
-  cudaFreeHost(inputPrefixPinned);
-  inputPrefixPinned = NULL;
   lostWarning = false;
 
   cudaError_t err = cudaGetLastError();
@@ -467,7 +472,8 @@ void GPUEngine::SetPrefix(std::vector<LPREFIX> prefixes, uint32_t totalPrefix) {
     printf("GPUEngine: Allocate prefix lookup memory: %s\n", cudaGetErrorString(err));
     return;
   }
-  err = cudaHostAlloc(&inputPrefixLookUpPinned, (_64K+totalPrefix) * 4, cudaHostAllocWriteCombined | cudaHostAllocMapped);
+  // Pinned staging buffer; no host-mapping required.
+  err = cudaHostAlloc(&inputPrefixLookUpPinned, (_64K+totalPrefix) * 4, cudaHostAllocWriteCombined);
   if (err != cudaSuccess) {
     printf("GPUEngine: Allocate prefix lookup pinned memory: %s\n", cudaGetErrorString(err));
     return;
@@ -496,9 +502,7 @@ void GPUEngine::SetPrefix(std::vector<LPREFIX> prefixes, uint32_t totalPrefix) {
 
   cudaStreamSynchronize(stream);
 
-  // We do not need the input pinned memory anymore
-  cudaFreeHost(inputPrefixPinned);
-  inputPrefixPinned = NULL;
+  // Keep inputPrefixPinned for future SetPrefix/SetPattern calls.
   cudaFreeHost(inputPrefixLookUpPinned);
   inputPrefixLookUpPinned = NULL;
   lostWarning = false;
@@ -582,12 +586,9 @@ bool GPUEngine::SetKeys(Point *p) {
   // Fill device memory
   cudaMemcpyAsync(inputKey, inputKeyPinned, nbThread*32*2, cudaMemcpyHostToDevice, stream);
 
-  if (!rekey) {
-    // We do not need the input pinned memory anymore
-    cudaStreamSynchronize(stream);
-    cudaFreeHost(inputKeyPinned);
-    inputKeyPinned = NULL;
-  }
+  // Ensure upload completes before the kernel reads the keys.
+  // Keep the pinned buffer so rekey and subsequent runs are safe.
+  cudaStreamSynchronize(stream);
 
   cudaError_t err = cudaGetLastError();
   if (err != cudaSuccess) {
@@ -676,10 +677,12 @@ bool GPUEngine::CheckHash(uint8_t *h, vector<ITEM>& found,int tid,int incr,int e
     ok = false;
     printf("Expected item not found %s (thread=%d, incr=%d, endo=%d)\n",
       toHex(h, 20).c_str(),tid,incr,endo);
-	if (found[l].hash != NULL)
-		printf("%s\n", toHex(found[l].hash, 20).c_str());
-	else
-		printf("NULL\n");
+    // Defensive logging: avoid out-of-bounds access when nothing matched.
+    if (l >= 0 && l < (int)found.size() && found[l].hash != NULL) {
+      printf("Nearest GPU item: %s\n", toHex(found[l].hash, 20).c_str());
+    } else {
+      printf("Nearest GPU item: <none>\n");
+    }
   }
 
   return ok;
