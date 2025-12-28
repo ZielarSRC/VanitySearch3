@@ -99,12 +99,11 @@ __device__ __noinline__ void CheckHashComp(const prefix_t *__restrict__ prefix,
                                            uint32_t *__restrict__ out) {
 
   uint32_t   h[5];
-  //uint64_t   pe1x[4];
-  //uint64_t   pe2x[4];
-
+  uint64_t   pe1x[4];
+  uint64_t   pe2x[4];
   _GetHash160Comp(px, isOdd, (uint8_t *)h);
   CHECK_POINT(h, incr, 0, true);
-  /*
+
   _ModMult(pe1x, px, _beta);
   _GetHash160Comp(pe1x, isOdd, (uint8_t *)h);
   CHECK_POINT(h, incr, 1, true);
@@ -118,7 +117,6 @@ __device__ __noinline__ void CheckHashComp(const prefix_t *__restrict__ prefix,
   CHECK_POINT(h, -incr, 1, true);
   _GetHash160Comp(pe2x, !isOdd, (uint8_t *)h);
   CHECK_POINT(h, -incr, 2, true);
-  */
 
 }
 
@@ -131,12 +129,11 @@ __device__ __noinline__ void CheckHashP2SHComp(const prefix_t *__restrict__ pref
                                                uint32_t *__restrict__ out) {
 
   uint32_t   h[5];
-  //uint64_t   pe1x[4];
-  //uint64_t   pe2x[4];
-
+  uint64_t   pe1x[4];
+  uint64_t   pe2x[4];
   _GetHash160P2SHComp(px, isOdd, (uint8_t *)h);
   CHECK_POINT_P2SH(h, incr, 0, true);
-  /*
+
   _ModMult(pe1x, px, _beta);
   _GetHash160P2SHComp(pe1x, isOdd, (uint8_t *)h);
   CHECK_POINT_P2SH(h, incr, 1, true);
@@ -150,7 +147,6 @@ __device__ __noinline__ void CheckHashP2SHComp(const prefix_t *__restrict__ pref
   CHECK_POINT_P2SH(h, -incr, 1, true);
   _GetHash160P2SHComp(pe2x, !isOdd, (uint8_t *)h);
   CHECK_POINT_P2SH(h, -incr, 2, true);
-  */
 
 }
 
@@ -165,13 +161,12 @@ __device__ __noinline__ void CheckHashUncomp(const prefix_t *__restrict__ prefix
                                              uint32_t *__restrict__ out) {
 
   uint32_t   h[5];
-  //uint64_t   pe1x[4];
-  //uint64_t   pe2x[4];
-  //uint64_t   pyn[4];
-
+  uint64_t   pe1x[4];
+  uint64_t   pe2x[4];
+  uint64_t   pyn[4];
   _GetHash160(px, py, (uint8_t *)h);
   CHECK_POINT(h, incr, 0, false);
-  /*
+
   _ModMult(pe1x, px, _beta);
   _GetHash160(pe1x, py, (uint8_t *)h);
   CHECK_POINT(h, incr, 1, false);
@@ -187,7 +182,6 @@ __device__ __noinline__ void CheckHashUncomp(const prefix_t *__restrict__ prefix
   CHECK_POINT(h, -incr, 1, false);
   _GetHash160(pe2x, pyn, (uint8_t *)h);
   CHECK_POINT(h, -incr, 2, false);
-  */
 }
 
 __device__ __noinline__ void CheckHashP2SHUncomp(const prefix_t *__restrict__ prefix,
@@ -199,13 +193,12 @@ __device__ __noinline__ void CheckHashP2SHUncomp(const prefix_t *__restrict__ pr
                                                  uint32_t *__restrict__ out) {
 
   uint32_t   h[5];
-  //uint64_t   pe1x[4];
-  //uint64_t   pe2x[4];
-  //uint64_t   pyn[4];
-
+  uint64_t   pe1x[4];
+  uint64_t   pe2x[4];
+  uint64_t   pyn[4];
   _GetHash160P2SHUncomp(px, py, (uint8_t *)h);
   CHECK_POINT_P2SH(h, incr, 0, false);
-  /*
+
   _ModMult(pe1x, px, _beta);
   _GetHash160P2SHUncomp(pe1x, py, (uint8_t *)h);
   CHECK_POINT_P2SH(h, incr, 1, false);
@@ -221,7 +214,6 @@ __device__ __noinline__ void CheckHashP2SHUncomp(const prefix_t *__restrict__ pr
   CHECK_POINT_P2SH(h, -incr, 1, false);
   _GetHash160P2SHUncomp(pe2x, pyn, (uint8_t *)h);
   CHECK_POINT_P2SH(h, -incr, 2, false);
-  */
 }
 
 // -----------------------------------------------------------------------------------------
