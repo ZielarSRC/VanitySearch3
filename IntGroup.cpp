@@ -7,12 +7,17 @@ IntGroup::IntGroup(int size) {
   subp = (Int *)malloc(size * sizeof(Int));
 }
 
-IntGroup::~IntGroup() { free(subp); }
+IntGroup::~IntGroup() {
+  free(subp);
+}
 
-void IntGroup::Set(Int *pts) { ints = pts; }
+void IntGroup::Set(Int *pts) {
+  ints = pts;
+}
 
 // Compute modular inversion of the whole group
 void IntGroup::ModInv() {
+
   Int newValue;
   Int inverse;
 
@@ -32,4 +37,5 @@ void IntGroup::ModInv() {
   }
 
   ints[0].Set(&inverse);
+
 }

@@ -8,8 +8,7 @@
  * Encode a byte sequence as a base58-encoded string.
  * pbegin and pend cannot be nullptr, unless both are.
  */
-std::string EncodeBase58(const unsigned char* pbegin,
-                         const unsigned char* pend);
+std::string EncodeBase58(const unsigned char* pbegin, const unsigned char* pend);
 
 /**
  * Encode a byte vector as a base58-encoded string
@@ -29,4 +28,5 @@ bool DecodeBase58(const char* psz, std::vector<unsigned char>& vchRet);
  */
 bool DecodeBase58(const std::string& str, std::vector<unsigned char>& vchRet);
 
-#endif  // BASE58_H
+
+#endif // BASE58_H

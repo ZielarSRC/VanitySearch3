@@ -1,6 +1,6 @@
 # VanitySearch
 
-VanitySearch is a bitcoin address prefix finder. If you want to generate safe private keys, use the -s option to enter your passphrase which will be used for generating a base key as for BIP38 standard (*VanitySearch.exe -s "My PassPhrase" 1MyPrefix*). You can also use *VanitySearch.exe -ps "My PassPhrase"* which will add a crypto secure seed to your passphrase.\
+VanitySearch is a bitcoin address prefix finder. If you want to generate safe private keys, use the -s option to enter your passphrase which will be used for generating a base key as for BIP38 standard (*VanitySeacrh.exe -s "My PassPhrase" 1MyPrefix*). You can also use *VanitySeacrh.exe -ps "My PassPhrase"* which will add a crypto secure seed to your passphrase.\
 VanitySearch may not compute a good grid size for your GPU, so try different values using -g option in order to get the best performances. If you want to use GPUs and CPUs together, you may have best performances by keeping one CPU core for handling GPU(s)/CPU exchanges (use -t option to set the number of CPU threads).
 
 # Feature
@@ -15,7 +15,7 @@ VanitySearch may not compute a good grid size for your GPU, so try different val
   <li>CUDA optimisation via inline PTX assembly</li>
   <li>Seed protected by pbkdf2_hmac_sha512 (BIP38)</li>
   <li>Support P2PKH, P2SH and BECH32 addresses</li>
-  <li>Support split-key vanity address</li>
+  <li>Support split-key vanity address</li>    
 </ul>
 
 # Discussion Thread
@@ -27,8 +27,8 @@ VanitySearch may not compute a good grid size for your GPU, so try different val
 You can downlad latest release from https://github.com/JeanLucPons/VanitySearch/releases
 
 ```
-VanitySearch [-check] [-v] [-u] [-b] [-c] [-gpu] [-stop] [-i inputfile]
-             [-gpuId gpuId1[,gpuId2,...]] [-g g1x,g1y,[,g2x,g2y,...]]
+VanitySeacrh [-check] [-v] [-u] [-b] [-c] [-gpu] [-stop] [-i inputfile]
+             [-gpuId gpuId1[,gpuId2,...]] [-g gridSize1[,gridSize2,...]]
              [-o outputfile] [-m maxFound] [-ps seed] [-s seed] [-t nbThread]
              [-nosse] [-r rekey] [-check] [-kp] [-sp startPubKey]
              [-rp privkey partialkeyfile] [prefix]
@@ -43,7 +43,7 @@ VanitySearch [-check] [-v] [-u] [-b] [-c] [-gpu] [-stop] [-i inputfile]
  -i inputfile: Get list of prefixes to search from specified file
  -o outputfile: Output results to the specified file
  -gpu gpuId1,gpuId2,...: List of GPU(s) to use, default is 0
- -g g1x,g1y,g2x,g2y, ...: Specify GPU(s) kernel gridsize, default is 8*(MP number),128
+ -g gridSize1,gridSize2,...: Specify GPU(s) kernel gridsize, default is 8*(MP number)
  -m: Specify maximun number of prefixes found by each kernel call
  -s seed: Specify a seed for the base key, default is random
  -ps seed: Specify a seed concatened with a crypto secure random seed
@@ -51,28 +51,26 @@ VanitySearch [-check] [-v] [-u] [-b] [-c] [-gpu] [-stop] [-i inputfile]
  -nosse: Disable SSE hash function
  -l: List cuda enabled devices
  -check: Check CPU and GPU kernel vs CPU
- -cp privKey: Compute public key (privKey in hex hormat)
  -kp: Generate key pair
  -rp privkey partialkeyfile: Reconstruct final private key(s) from partial key(s) info.
  -sp startPubKey: Start the search with a pubKey (for private key splitting)
  -r rekey: Rekey interval in MegaKey, default is disabled
 ```
-
+ 
 Exemple (Windows, Intel Core i7-4770 3.4GHz 8 multithreaded cores, GeForce GTX 1050 Ti):
-
 ```
 C:\C++\VanitySearch\x64\Release>VanitySearch.exe -stop -gpu 1TryMe
-VanitySearch v1.17
+VanitySearch v1.11
 Difficulty: 15318045009
 Search: 1TryMe [Compressed]
-Start Fri Jan 31 08:12:19 2020
-Base Key: DA12E013325F12D6B68520E327847218128B788E6A9F2247BC104A0EE2818F44
+Start Wed Apr  3 08:47:08 2019
+Base Key:87B1EC7916A180ACCF07CAAEFA7F6508F3898F61AF49C201D70DF1543CCBA572
 Number of CPU thread: 7
 GPU: GPU #0 GeForce GTX 1050 Ti (6x128 cores) Grid(48x128)
-[251.82 Mkey/s][GPU 235.91 Mkey/s][Total 2^32.82][Prob 39.1%][50% in 00:00:12][Found 0]
-PubAddress: 1TryMeJT7cfs4M6csEyhWVQJPAPmJ4NGw
-Priv (WIF): p2pkh:Kxs4iWcqYHGBfzVpH4K94STNMHHz72DjaCuNdZeM5VMiP9zxMg15
-Priv (HEX): 0x310DBFD6AAB6A63FC71CAB1150A0305ECABBE46819641D2594155CD41D081AF1
+245.830 MK/s (GPU 226.348 MK/s) (2^30.87) [P 12.06%][50.00% in 00:00:35][0]
+Pub Addr: 1TryMeTKr3tuJZYHMSNWdPZfhRRNYj3yE
+Priv (WIF): p2pkh:L5NuSjQRARifQJbZ5RyLrQhbSz25jYxupnqqydnBdANeH3QNoUph
+Priv (HEX): 0xF36DD1EEC2A9658E50B39B280D4002ED3A07C7B6C07B37B191973BDDFBF9E375
 ```
 
 ```
@@ -128,7 +126,7 @@ VanitySearch.exe -sp 03FC71AE1E88F143E8B05326FC9A83F4DAB93EA88FFEACD37465ED843FC
 ```
 It generates a keyinfo.txt file containing the partial private key.
 ```
-PubAddress: 1ALicegohz9YgrLLa4ADCmam7X2Zr6xJZx
+Pub Addr: 1ALicegohz9YgrLLa4ADCmam7X2Zr6xJZx
 PartialPriv: L2hbovuDd8nG4nxjDq1yd5qDsSQiG8xFsAFbHMcThqfjSP6WLg89
 ```
 Bob sends back this file to Alice. It can also be done by email. The partial private key does not allow anyone to guess the final Alice's private key.
@@ -159,7 +157,7 @@ The bitcoin address (P2PKH) consists of a hash160 (displayed in Base58 format) w
 If we have a list of m distinct addresses (m<=2<sup>160</sup>), the search space is then reduced to 2<sup>160</sup>/m, the probability to find a collision after 1 try becomes m/2<sup>160</sup> and the probability to find a collision after n tries becomes 1-(1-m/2<sup>160</sup>)<sup>n</sup>.\
 An example:\
 We have a hardware capable of generating **1GKey/s** and we have an input list of **10<sup>6</sup>** addresses, the following table shows the probability of finding a collision after a certain amount of time:
-
+  
 | Time     |  Probability  |
 |----------|:-------------:|
 | 1 second |6.8e-34|
@@ -174,7 +172,7 @@ We have a hardware capable of generating **1GKey/s** and we have an input list o
 
 Calculation has been done using this [online high precision calculator](https://keisan.casio.com/calculator)
 
-As you can see, even with a competitive hardware, it is very unlikely that you find a collision. Birthday paradox doesn't apply in this context, it works only if we know already the public key (not the address, the hash of the public key) we want to find.  This program doesn't look for collisions between public keys. It searchs only for collisions with addresses with a certain prefix.
+As you can see, even with a competitive hardware, it is very unlikely that you find a collision. Birthday paradox doesn't apply in this context, it works only if we know already the public key (not the address, the hash of the public key) we want to find.  This program doesn't look for collisions between public keys. It searchs only for collisions with addresses with a certain prefix. 
 
 # Compilation
 
@@ -189,109 +187,45 @@ Note: The current relase has been compiled with CUDA SDK 10.0, if you have a dif
 
 ## Linux
 
- - Intall CUDA SDK.
- - Install older g++ (just for the CUDA SDK). Depenging on the CUDA SDK version and on your Linux distribution you may need to install an older g++.
- - Install recent gcc. VanitySearch needs to be compiled and linked with a recent gcc (>=7). The current release has been compiled with gcc 7.3.0.
- - Edit the makefile and set up the appropriate CUDA SDK and compiler paths for nvcc. Or pass them as variables to `make` invocation.
+Intall CUDA SDK.\
+Depenging on the CUDA SDK version and on your Linux distribution you may need to install an older g++ (just for the CUDA SDK).\
+Edit the makefile and set up the good CUDA SDK path and appropriate compiler for nvcc. 
 
-    ```make
-    CUDA       = /usr/local/cuda-8.0
-    CXXCUDA    = /usr/bin/g++-4.8
-    ```
+```
+CUDA       = /usr/local/cuda-8.0
+CXXCUDA    = /usr/bin/g++-4.8
+```
 
- - You can enter a list of architectrures (refer to nvcc documentation) if you have several GPU with different architecture.
+You can enter a list of architectrure (refer to nvcc documentation) if you have several GPU with different architecture. Compute capability 2.0 (Fermi) is deprecated for recent CUDA SDK.
+VanitySearch need to be compiled and linked with a recent gcc (>=7). The current release has been compiled with gcc 7.3.0.\
+Go to the VanitySearch directory. ccap is the desired compute capability.
 
- - Set CCAP to the desired compute capability according to your hardware. See docker section for more. Compute capability 2.0 (Fermi) is deprecated for recent CUDA SDK.
-
- - Go to the VanitySearch directory.
- - To build CPU-only version (without CUDA support):
-    ```sh
-    $ make all
-    ```
- - To build with CUDA:
-    ```sh
-    $ make gpu=1 CCAP=2.0 all
-    ```
-
+```
+$ g++ -v
+gcc version 7.3.0 (Ubuntu 7.3.0-27ubuntu1~18.04)
+$ make all (for build without CUDA support)
+or
+$ make gpu=1 ccap=20 all
+```
 Runnig VanitySearch (Intel(R) Xeon(R) CPU, 8 cores,  @ 2.93GHz, Quadro 600 (x2))
-```sh
-$ export LD_LIBRARY_PATH=/usr/local/cuda-8.0/lib64
-$ ./VanitySearch -t 7 -gpu -gpuId 0,1 1TryMe
-# VanitySearch v1.10
-# Difficulty: 15318045009
-# Search: 1TryMe [Compressed]
-# Start Wed Mar 27 10:26:43 2019
-# Base Key:C6718D8E50C1A5877DE3E52021C116F7598826873C61496BDB7CAD668CE3DCE5
-# Number of CPU thread: 7
-# GPU: GPU #1 Quadro 600 (2x48 cores) Grid(16x128)
-# GPU: GPU #0 Quadro 600 (2x48 cores) Grid(16x128)
-# 40.284 MK/s (GPU 27.520 MK/s) (2^31.84) [P 22.24%][50.00% in 00:02:47][0]
-#
-# Pub Addr: 1TryMeERTZK7RCTemSJB5SNb2WcKSx45p
-# Priv (WIF): Ky9bMLDpb9o5rBwHtLaidREyA6NzLFkWJ19QjPDe2XDYJdmdUsRk
-# Priv (HEX): 0x398E7271AF3E5A78821C1ADFDE3EE90760A6B65F72D856CFE455B1264350BCE8
 ```
-
-## Docker
-
-[![Docker Stars](https://img.shields.io/docker/stars/ratijas/vanitysearch.svg)](https://hub.docker.com/r/ratijas/vanitysearch)
-[![Docker Pulls](https://img.shields.io/docker/pulls/ratijas/vanitysearch.svg)](https://hub.docker.com/r/ratijas/vanitysearch)
-
-### Supported tags
-
- * [`latest`, `cuda-ccap-6`, `cuda-ccap-6.0` *(cuda/Dockerfile)*](./docker/cuda/Dockerfile)
- * [`cuda-ccap-5`, `cuda-ccap-5.2` *(cuda/Dockerfile)*](./docker/cuda/Dockerfile)
- * [`cuda-ccap-2`, `cuda-ccap-2.0` *(cuda/ccap-2.0.Dockerfile)*](./docker/cuda/ccap-2.0.Dockerfile)
- * [`cpu` *(cpu/Dockerfile)*](./docker/cpu/Dockerfile)
-
-### Docker build
-
-Docker images are build for CPU-only version and for each supported CUDA Compute capability version (`CCAP`). Generally, users should choose latest `CCAP` supported by their hardware and driver. Compatibility table can be found on [Wikipedia](https://en.wikipedia.org/wiki/CUDA#GPUs_supported) or at the official NVIDIA web page of your product.
-
-Docker uses multi-stage builds to improve final image size. Scripts are provided to facilitate the build process.
-
-When building on your own, full image name (including owner/repo parts) can be customized via `IMAGE_NAME` environment variable. It defaults to just `vanitysearch` withour owner part. Pre-built images are available on Docker hub from [@ratijas](https://hub.docker.com/r/ratijas/vanitysearch).
-
-#### Docker build / CPU-only
-
-Build and tag `vanitysearch:cpu` image:
-```sh
-$ ./docker/cpu/build.sh
-```
-
-#### Docker build / GPU
-
-Build with "default" GPU support, which might not be suitable for your system:
-```sh
-$ ./docker/cuda/build.sh
-```
-
-Build with customized GPU support:
-```sh
-$ env CCAP=5.2 CUDA=10.2 ./docker/cuda/build.sh
-```
-
-As for docker-compose folks, sorry, docker-composed GPUs are not (yet) supported on a 3.x branch. But it (hopefully) will change soon.
-
-### Docker run
-
-Note: VanitySearch image does not (neither should) require network access. To further ensure no data ever leaks from the running container, always pass `--network none` to the docker run command.
-
-```sh
-$ docker run -it --rm --gpus all --network none ratijas/vanitysearch:cuda-ccap-5.2 -gpu -c -stop 1docker
-# VanitySearch v1.18
-# Difficulty: 957377813
-# Search: 1docker [Compressed, Case unsensitive] (Lookup size 3)
-# Start Sat Jul 11 17:41:32 2020
-# Base Key: B506F2C7CA8AA2E826F2947012CFF15D2E6CD3DA5C562E8252C9F755F2A4C5D3
-# Number of CPU thread: 1
-# GPU: GPU #0 GeForce GTX 970M (10x128 cores) Grid(80x128)
-#
-# PubAddress: 1DoCKeRXYyydeQy6xxpneqtDovXFarAwrE
-# Priv (WIF): p2pkh:KzESATCZFmnH1RfwT5XbCF9dZSnDGTS8z61YjnQbgFiM7tXtcH73
-# Priv (HEX): 0x59E27084C6252377A8B7AABB20AFD975060914B3747BD6392930BC5BE7A06565
+$export LD_LIBRARY_PATH=/usr/local/cuda-8.0/lib64
+pons@linpons:~/VanitySearch$ ./VanitySearch -t 7 -gpu -gpuId 0,1 1TryMe
+VanitySearch v1.10
+Difficulty: 15318045009
+Search: 1TryMe [Compressed]
+Start Wed Mar 27 10:26:43 2019
+Base Key:C6718D8E50C1A5877DE3E52021C116F7598826873C61496BDB7CAD668CE3DCE5
+Number of CPU thread: 7
+GPU: GPU #1 Quadro 600 (2x48 cores) Grid(16x128)
+GPU: GPU #0 Quadro 600 (2x48 cores) Grid(16x128)
+40.284 MK/s (GPU 27.520 MK/s) (2^31.84) [P 22.24%][50.00% in 00:02:47][0]  
+Pub Addr: 1TryMeERTZK7RCTemSJB5SNb2WcKSx45p
+Priv (WIF): Ky9bMLDpb9o5rBwHtLaidREyA6NzLFkWJ19QjPDe2XDYJdmdUsRk
+Priv (HEX): 0x398E7271AF3E5A78821C1ADFDE3EE90760A6B65F72D856CFE455B1264350BCE8
 ```
 
 # License
 
 VanitySearch is licensed under GPLv3.
+

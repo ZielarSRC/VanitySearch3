@@ -1,8 +1,3 @@
-#---------------------------------------------------------------------
-# Makefile for VanitySearch
-#
-# Author : Jean-Luc PONS
-
 SRC = Base58.cpp IntGroup.cpp main.cpp Random.cpp \
       Timer.cpp Int.cpp IntMod.cpp Point.cpp SECP256K1.cpp \
       Vanity.cpp GPU/GPUGenerate.cpp hash/ripemd160.cpp \
@@ -30,59 +25,47 @@ OBJET = $(addprefix $(OBJDIR)/, \
 
 endif
 
-## Modernized build defaults (Ubuntu 24.04 / CUDA 12+)
-## CPU-only build works without CUDA installed.
-
 CXX        ?= g++
+# CUDA path only needed for GPU build (gpu=1)
+CUDA       ?= /usr/local/cuda
+CXXCUDA    ?= $(CXX)
+NVCC       ?= $(CUDA)/bin/nvcc
 
-## CUDA (only required when building with gpu=1)
-CUDA_HOME  ?= /usr/local/cuda
-NVCC       ?= $(CUDA_HOME)/bin/nvcc
-
-## CUDA architectures (fatbin). Override with: CUDA_ARCHS="86 90 100"
-CUDA_ARCHS ?= 86 90 100
-
-define GEN_GENCODE
- -gencode=arch=compute_$(1),code=sm_$(1)
-endef
-NVCC_GENCODE := $(foreach a,$(CUDA_ARCHS),$(call GEN_GENCODE,$(a)))
-
-## Optional native tuning (fastest on the build machine). Disable with NATIVE=0
-NATIVE ?= 1
-ifeq ($(NATIVE),1)
-  NATIVE_FLAGS = -march=native -mtune=native
-else
-  NATIVE_FLAGS =
-endif
-
-COMMON_CXXFLAGS = -m64 -mssse3 -Wno-write-strings -I. $(NATIVE_FLAGS)
+# Default compute capability for GPU build.
+# AWS p6-b200.* targets Blackwell (sm_100). Override if needed, e.g.: make gpu=1 ccap=90
+ccap       ?= 100
 
 ifdef gpu
-  COMMON_CXXFLAGS += -DWITHGPU
-  CUDA_INCLUDES = -I$(CUDA_HOME)/include
-  CUDA_LIBS     = -L$(CUDA_HOME)/lib64 -lcudart
-else
-  CUDA_INCLUDES =
-  CUDA_LIBS     =
-endif
-
 ifdef debug
-  CXXFLAGS = $(COMMON_CXXFLAGS) -g -O0 -DDEBUG $(CUDA_INCLUDES)
+CXXFLAGS   = -DWITHGPU -m64 -mssse3 -Wno-write-strings -g -std=c++14 -fno-strict-aliasing -I. -I$(CUDA)/include
 else
-  CXXFLAGS = $(COMMON_CXXFLAGS) -O3 $(CUDA_INCLUDES)
+CXXFLAGS   = -DWITHGPU -m64 -mssse3 -Wno-write-strings -O3 -std=c++14 -fno-strict-aliasing -I. -I$(CUDA)/include
 endif
-
-LFLAGS = -lpthread $(CUDA_LIBS)
+LFLAGS     = -lpthread -L$(CUDA)/lib64 -lcudart
+else
+ifdef debug
+CXXFLAGS   = -m64 -mssse3 -Wno-write-strings -g -std=c++14 -fno-strict-aliasing -I.
+else
+CXXFLAGS   = -m64 -mssse3 -Wno-write-strings -O3 -std=c++14 -fno-strict-aliasing -I.
+endif
+LFLAGS     = -lpthread
+endif
 
 
 #--------------------------------------------------------------------
 
 ifdef gpu
+ifdef debug
 $(OBJDIR)/GPU/GPUEngine.o: GPU/GPUEngine.cu
-	@command -v $(NVCC) >/dev/null 2>&1 || { echo "NVCC not found. Install CUDA or set CUDA_HOME."; exit 1; }
-	$(NVCC) $(NVCC_GENCODE) -maxrregcount=0 --ptxas-options=-v --compile \
-	  --compiler-options -fPIC -m64 $(if $(debug),-G -g,-O3) -I$(CUDA_HOME)/include \
-	  -o $(OBJDIR)/GPU/GPUEngine.o -c GPU/GPUEngine.cu
+	$(NVCC) -DWITHGPU -G -maxrregcount=0 --ptxas-options=-v --compile --compiler-options -fPIC -ccbin $(CXXCUDA) -m64 -g -I$(CUDA)/include \
+		-gencode=arch=compute_$(ccap),code=sm_$(ccap) -gencode=arch=compute_$(ccap),code=compute_$(ccap) \
+		-o $(OBJDIR)/GPU/GPUEngine.o -c GPU/GPUEngine.cu
+else
+$(OBJDIR)/GPU/GPUEngine.o: GPU/GPUEngine.cu
+	$(NVCC) -DWITHGPU -maxrregcount=0 --ptxas-options=-v --compile --compiler-options -fPIC -ccbin $(CXXCUDA) -m64 -O3 -I$(CUDA)/include \
+		-gencode=arch=compute_$(ccap),code=sm_$(ccap) -gencode=arch=compute_$(ccap),code=compute_$(ccap) \
+		-o $(OBJDIR)/GPU/GPUEngine.o -c GPU/GPUEngine.cu
+endif
 endif
 
 $(OBJDIR)/%.o : %.cpp
